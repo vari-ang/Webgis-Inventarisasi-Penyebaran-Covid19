@@ -1,0 +1,1058 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+
+    <!-- Google Icon, Leaflet, Marker Cluster, Leaflet Draw, Fullscreen map, Bootstrap CSS, own style, jQuery UI (Autocomplete) -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+    <link rel="stylesheet" href="../resources/leaflet.css" type="text/css">
+    <link rel="stylesheet" href="../resources/markercluster/screen.css"/>
+    <link rel="stylesheet" href="../resources/markercluster/MarkerCluster.css"/>
+    <link rel="stylesheet" href="../resources/markercluster/MarkerCluster.Default.css"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/0.4.2/leaflet.draw.css"/>
+    <link href='https://api.mapbox.com/mapbox.js/plugins/leaflet-fullscreen/v1.0.1/leaflet.fullscreen.css' rel='stylesheet' />
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+    
+    <title>Webgis Inventarisasi Penyebaran Covid19</title>
+</head>
+<body>
+    <!-- Header -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <a class="navbar-brand" href="index.html">Webgis Inventarisasi Penyebaran Covid19</a>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNavAltMarkup" aria-controls="navbarNavAltMarkup" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNavAltMarkup">
+            <div class="navbar-nav">
+                <a class="nav-item nav-link active" href="index.html">Beranda <span class="sr-only">(current)</span></a>
+                <a class="nav-item nav-link login-admin-text" href="login.html">Login Admin</a>
+            </div>
+        </div>
+    </nav>
+
+    <div id="snackbar">
+        <h4>Rendering Peta Covid-19</h4>
+        <p>Mohon tunggu sebentar, sistem sedang memproses file Geojson peta penyebaran Covid-19 di Indonesia...</p>
+    </div>
+
+    <!-- Admin box -->
+    <div class="admin-box bg-dark mt-2 ml-2 mr-2 pt-1">
+        <div class="row mt-2 ml-2 mr-2 pt-1">
+            <div class="col">
+                <p>Selamat Datang Admin, <em><span class="admin-username" style="color: yellow;"></span></em></p>
+
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" value="penderita" id="checkbox_penderita" checked>
+                    <label class="form-check-label" for="checkbox_penderita">
+                        Layer Penderita
+                    </label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" value="suspect" id="checkbox_suspect" checked>
+                    <label class="form-check-label" for="checkbox_suspect">
+                        Layer Suspect
+                    </label>
+                </div>
+            </div>
+            <div class="col">
+                <button type="button" class="btn btn-logout btn-danger" style="float: right">Log Out</button>
+            </div> 
+        </div>
+        <div class="row text-white mt-3 ml-2">
+            <div class="col">
+                <p>
+                    <button type="button" id="btn-digit-point" class="btn btn-primary">
+                        <i class="material-icons">place</i>
+                        Digit Point
+                    </button>
+                </p>
+                <p style="font-size: 0.9em">
+                    <em>Note</em>: Untuk menghapus atau merubah data pasien, klik Icon pasien pada Map, lalu tekan tombol yang diinginkan.
+                </p>
+
+                <div id="modal-form-delete" class="modal" tabindex="-1" role="dialog">
+                    <div class="modal-dialog" role="document">
+                      <div class="modal-content bg-dark">
+                        <div class="modal-header">
+                          <h5 class="modal-title">Form Penghapusan Data Pasien Covid19</h5>
+                          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true" style="color: white;">&times;</span>
+                          </button>
+                        </div>
+                        <div class="modal-body">
+                           
+                        </div>
+                        <div class="modal-footer">
+                          <button type="button" id="btn-delete-save" class="btn btn-danger">Hapus</button>
+                        </div>
+
+                        <input type="hidden" id="delete-patient-id" name="delete-patient-id">
+
+                        <p id="delete-msg" class="text-center" style="margin-left: 15px;"><b></b></p>
+                      </div>
+                    </div>
+                </div>
+
+                <!-- Modal for inputting data (will be shown after digiting point is clicked) -->
+                <div id="modal-form-input" class="modal" tabindex="-1" role="dialog">
+                    <div class="modal-dialog" role="document">
+                      <div class="modal-content bg-dark">
+                        <div class="modal-header">
+                          <h5 class="modal-title">Form Tambah Data Pasien Covid19</h5>
+                          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true" style="color: white;">&times;</span>
+                          </button>
+                        </div>
+                        <div class="modal-body">
+                            <p class="selected-coordinates-text">
+                              Titik yang dipilih (Lat, Long): <br><span class="draw-coordinates"></span>
+                            </p>
+                            <form id="frmData" method="post">
+                                <div class="form-group row">
+                                    <label for="input-patient-type" class="col-sm-2 col-form-label">Jenis Pasien</label>
+                                    <div class="col-sm-10">
+                                        <select id="input-patient-type" name="input-patient-type" class="form-control">
+                                            <option id="patient-0" value="">-- Pilih --</option>
+                                            <option value="penderita">Penderita</option>
+                                            <option value="suspect">Suspect</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <h5>Biodata Pasien:</h5>
+                                <div class="form-group row">
+                                    <label for="input-name" class="col-sm-2 col-form-label">Nama</label>
+                                    <div class="col-sm-10">
+                                        <input type="text" class="form-control" id="input-name" name="input-name" placeholder="Nama Anda" maxlength="45">
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label for="input-ktp" class="col-sm-2 col-form-label">No. KTP</label>
+                                    <div class="col-sm-10">
+                                        <input type="text" class="form-control" id="input-ktp" name="input-ktp" placeholder="3404075103910008" maxlength="20">
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label for="input-address" class="col-sm-2 col-form-label">Alamat Rumah</label>
+                                    <div class="col-sm-10">
+                                        <input type="text" class="form-control" id="input-address" name="input-address" placeholder="Jl. Durian 69" maxlength="45">
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label for="input-photo" class="col-sm-2 col-form-label">Foto</label>
+                                    <div class="col-sm-10">
+                                        <input type="file" class="form-control-file" id="input-photo" name="input-photo[]" accept="image/*">
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label for="input-sick-complaint" class="col-sm-2 col-form-label">Keluhan Sakit</label>
+                                    <div class="col-sm-10">
+                                        <textarea class="form-control" id="input-sick-complaint" name="input-sick-complaint" placeholder="Batuk, Pilek, Tenggorokan Kering, Demam" style="resize: none;" maxlength="150"></textarea>
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label for="input-travel-history" class="col-sm-2 col-form-label">Riwayat Perjalanan</label>
+                                    <div class="col-sm-10">
+                                        <textarea class="form-control" id="input-travel-history" name="input-travel-history" placeholder="Pasien pergi ke Italy satu bulan yang lalu..." style="resize: none;" maxlength="150"></textarea>
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label class="col-sm-2 col-form-label">Lokasi Karantina</label>
+                                    <div class="col-sm-5">
+                                        <select id="input-quarantine-provinces" name="input-quarantine-provinces" class="form-control">
+                                            <option id="province-0" value="">-- Propinsi --</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-sm-5">
+                                        <select id="input-quarantine-districts" name="input-quarantine-districts" class="form-control">
+                                            <option id="district-0" value="">-- Kabupaten/Kota --</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <input type="hidden" id="patient_id" name="patient_id">
+                                <input type="hidden" id="geom" name="geom">
+                                <input type="hidden" id="is_changedate" name="is_changedate">
+                                <input type="hidden" id="datetime_added" name="datetime_added">
+                            </form>
+                        </div>
+                        <div class="modal-footer">
+                          <button type="button" id="btn-add-save" class="btn btn-primary">Tambah</button>
+                          <button type="button" id="btn-edit-save" class="btn btn-primary">Simpan Perubahan</button>
+                        </div>
+
+                        <p id="input-msg" class="text-center" style="margin-left: 15px;"><b></b></p>
+                      </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container-fluid">
+        <div class="row" style="margin-top: 10px;">
+            <div class="col-md-3 mb-3">
+                <ul class="list-group">
+                    <li class="list-group-item bg-dark">
+                        <h4>Total Pasien: <span id="total_pasien">...</span></h4>
+                    </li>
+                    <li class="list-group-item bg-dark" style="margin-top: -10px">
+                        Penderita: <span id="total_penderita">...</span>
+                    </li>
+                    <li class="list-group-item bg-dark" style="margin-top: -15px">
+                        Suspect: <span id="total_suspect">...</span>
+                    </li>
+                    <li class="list-group-item bg-dark">
+                        Rata-Rata Penderita/ Hari: <span id="rata_penderita_per_hari">...</span>
+                    </li>
+                    <li class="list-group-item bg-dark" style="margin-top: -15px">
+                        Rata-Rata Suspect/ Hari: <span id="rata_suspect_per_hari">...</span>
+                    </li>
+                    <li class="list-group-item bg-dark text-center" style="font-size: 0.8em">
+                        <em>*Semua data dihitung sejak 28 Februari 2020</em>
+                    </li>
+                </ul>
+            </div>
+            <div class="col-md-6 mb-3" style="padding: 0;">
+                <!-- Search Box -->
+                <p>Cari Propinsi Beserta Status Pasien Covid-19:</p>
+                <div class="input-group mb-3 ui-widget">
+                    <div class="input-group-prepend">
+                    <span class="input-group-text" id="inputGroup-sizing-default">Propinsi</span>
+                    </div>
+                    <input id="searchbox" type="text" class="form-control" aria-label="Sizing example input" aria-describedby="inputGroup-sizing-default">
+                </div>
+
+                <div style="position: relative;">
+                    <!-- Graph Chart -->
+                    <div id="overlay_chart" class="text-center" style="width:150px; display: none;">
+                        <span><a href="#" id="chart_close" style="color: #ef9a9a">[X]</a></span> <br>
+                        <span id="chart_title"></span> <br>
+                        <canvas id="canvas_chart" />
+                    </div>
+
+                    <!-- MAP -->
+                    <div id="map"></div>
+                </div>
+
+                <!-- Gradient Box -->
+                <div style="margin-top: 15px">
+                    <p style="margin-left: 15px">
+                        Gradasi Persebaran Pasien (Suspect atau Penderita) Covid-19 Menurut Lokasi Karantina per Kecamatan:
+                    </p>
+                    <div id="gradient-bar"></div>
+                    <div id="gradient-text">
+                        <div class="row">
+                            <div class="col">^</div>
+                            <div class="col">^</div>
+                            <div class="col">^</div>
+                            <div class="col">^<span style="float: right">^</span></div>
+                        </div>
+                        <div class="row" style="margin-top: -12.5px">
+                            <div class="col">0</div>
+                            <div class="col">100</div>
+                            <div class="col">500</div>
+                            <div class="col">1000 <span style="float: right">5000+</span></div>
+                        </div>
+                        <div class="row mt-1">
+                            <div class="col text-center"><em>(Sedang)</em></div>
+                            <div class="col text-center"><em>(Buruk)</em></div>
+                            <div class="col text-center"><em>(Sangat Buruk)</em></div>
+                            <div class="col text-center"><em>(Berbahaya)</em></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div id="provinces-with-case-list" class="list-group bg-dark">
+                    <a class="list-group-item bg-dark text-white text-center">
+                        <h5>Kasus Penyebaran Virus per Propinsi</h5>
+                    </a>
+                    <a class="list-group-item bg-dark text-white text-center">
+                        <em>Propinsi dengan kasus: <b id="total_provinces_with_case">20</b></em>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col text-center mt-4">
+                    <p>Grafik Pie Chart Kasus Covid-19 per Propinsi</p>
+    
+                    <div id="pie-chart-case-per-province" style="width:300px; margin: 0 auto;">
+                        <!-- <span id="chart_title"></span> <br> -->
+                        <canvas id="canvas-pie-chart-case-per-province" />
+                    </div>
+                </div>
+                <div class="col text-center mt-4">
+                    <p>Grafik Garis Pelaporan Pasien Covid-19 Per Bulan <br> <em>(Sejak Bulan Februari)</em></p>
+                
+                    <div id="line-chart-report" style="width:100%; max-width: 500px; height: 300px; margin: 0 auto;">
+                        <!-- <span id="chart_title"></span> <br> -->
+                        <canvas id="canvas-line-chart-report" />
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div style="height: 100px;"></div>
+
+    <!-- Footer -->
+    <footer class="text-center">
+        <div class="bg-dark">
+            Dikerjakan Oleh: Varianto (160717023). <span class="text-muted">Universitas Surabaya</span>
+        </div>
+    </footer>
+
+    <!-- Leaflet, Leaflet Ajax, Wicket, Marker Cluster, Leaflet Draw, Fullscreen map, jQuery, Popper.js, Bootstrap JS, jQuery UI (Autocomplete) -->
+    <script src="../resources/leaflet.js" type="text/javascript"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-ajax/2.1.0/leaflet.ajax.min.js"></script>
+    <script type="text/javascript" src="../resources/wicket/wicket.js"></script>
+    <script type="text/javascript" src="../resources/wicket/wicket-leaflet.js"></script> 
+    <script src="../resources/markercluster/leaflet.markercluster-src.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/0.4.2/leaflet.draw.js"></script> 
+    <script src='https://api.mapbox.com/mapbox.js/plugins/leaflet-fullscreen/v1.0.1/Leaflet.fullscreen.min.js'></script>
+	<script src="../resources/easyPrint/dist/bundle.js"></script>
+    <script src="https://code.jquery.com/jquery-3.4.1.min.js" integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo=" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
+    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+    <script src="../resources/Chart.bundle.js"></script>
+    <script src="../resources/utils.js"></script>
+    
+    <!-- Map Related -->
+    <script>
+        $('#snackbar').addClass('show');
+
+        ///// START FILL /////
+        var fill_white = '#ffffff'; 
+        var fill_yellow = '#ffeb3b'; 
+        var fill_yellow_darken_1 = '#fdd835'; 
+        var fill_yellow_darken_2 = '#fbc02d'; 
+        var fill_amber = '#ffc107'; 
+        var fill_amber_darken_1 = '#ffb300'; 
+        var fill_amber_darken_2 = '#ffa000'; 
+        var fill_amber_darken_3 = '#f9a825'; 
+        var fill_amber_darken_4 = '#f9a825'; 
+        var fill_red = '#f44336'; 
+        ///// END FILL /////
+
+        ///// START STYLE /////
+        var countKabupatenKota = 0;
+        function styleKabupatenKota(feature) {
+            var num; // number of patient per district
+            var styleObj = { 
+                weight: 0.15,
+                opacity: 1, 
+                fillOpacity: 0.75,
+                color: '#ffffff',
+                fillColor: fill_white,
+            };
+
+            // Get number of patients per district (kabupaten/kota)
+            $.ajax({
+                url: `../server/get_patients_districts.php?kode_kab=${feature.properties['KODE_KAB']}`,
+                type: 'GET',
+                async: false,
+                cache: false,
+                contentType: false,
+                enctype: 'multipart/form-data',
+                processData: false,
+                success: function(res) {
+                    num = parseInt(res);
+                    feature.properties['JUMLAH_PASIEN'] = num;
+
+                    if(num == 0) {  styleObj.fillOpacity = 0; }
+                    
+                    else if(num > 0 && num <= 50) { styleObj.fillColor = fill_yellow; }
+                    else if(num > 50 && num <= 100) { styleObj.fillColor = fill_yellow_darken_1; }
+
+                    else if(num > 100 && num <= 300) { styleObj.fillColor = fill_yellow_darken_2; }
+                    else if(num > 300 && num <= 500) { styleObj.fillColor = fill_amber; }
+
+
+                    else if(num > 500 && num <= 750) { styleObj.fillColor = fill_amber_darken_1; }
+                    else if(num > 750 && num <= 1000) { styleObj.fillColor = fill_amber_darken_2; }
+
+                    else if(num > 1000 && num <= 3000) { styleObj.fillColor = fill_amber_darken_3; }
+                    else if(num > 3000 && num <= 5000) { styleObj.fillColor = fill_amber_darken_4; }
+                    
+                    // > 5000
+                    else { styleObj.fillColor = fill_red; }
+
+                    countKabupatenKota += 1;
+
+                    // Remove loading when all cities is already rendered
+                    if(countKabupatenKota == 440) {
+                        $('#snackbar').removeClass('show');
+                        map.removeLayer(loadingMap); 
+                    }
+                }
+            });
+
+            return styleObj;
+        };
+
+        var iconSufferer = L.icon({
+            iconUrl: '../resources/icons/health-medical.png',
+            iconSize: [30, 40],
+            iconAnchor: [15, 40],
+        }); 
+
+        var iconSuspect = L.icon({
+            iconUrl: '../resources/icons/doctors.png',
+            iconSize: [30, 40],
+            iconAnchor: [15, 40],
+        }); 
+        ///// END STYLE /////
+
+        ///// BEGIN POPUP /////
+        function popupKabupatenKota(feature,layer){
+            layer.bindPopup(`
+                Kabupaten/ Kota ${feature.properties['NAMA_KAB']} <br>
+                Jumlah Pasien: ${feature.properties['JUMLAH_PASIEN']}
+            `);
+        }
+        ///// END POPUP /////
+
+        ///// BEGIN MAP /////
+        var map = L.map('map', {
+            fullscreenControl: true
+        }).setView([-7.256059 , 112.748376], 4);
+
+        var osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {});         
+        var googleStreets = L.tileLayer('http://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}',{ maxZoom: 20, subdomains:['mt0','mt1','mt2','mt3'] });
+        var googleHybrid = L.tileLayer('http://{s}.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}',{ maxZoom: 20, subdomains:['mt0','mt1','mt2','mt3'] });
+        var googleSat = L.tileLayer('http://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',{ maxZoom: 20, subdomains:['mt0','mt1','mt2','mt3'] });
+        googleSat.addTo(map);
+
+        var baseMaps = {
+            "Google Satellite": googleSat,
+            "googleHybrid": googleHybrid,
+            "Google Street": googleStreets,
+            "OpenStreetMap": osm
+	    };
+	  
+	    L.control.layers(baseMaps).addTo(map);
+
+        var markers = new L.MarkerClusterGroup();
+
+        var printer = L.easyPrint({
+      		tileLayer: googleSat,
+      		sizeModes: ['Current', 'A4Landscape', 'A4Portrait'],
+      		filename: 'Peta Penyebaran Covid-19 di Indonesia',
+      		exportOnly: true,
+      		hideControlContainer: true
+		}).addTo(map);
+        ///// END MAP /////
+
+        ///// BEGIN LAYER /////
+        var loadingMap = L.imageOverlay('../resources/images/loading-map.gif', [[3.877103, 98.634867], [-3.982793, 136.251667]]).addTo(map);
+
+        var kabupaten_kota = L.geoJson.ajax('../resources/kabupaten_kota.geojson', { 
+            style: styleKabupatenKota,
+            onEachFeature: popupKabupatenKota
+        }).addTo(map);
+
+        // Patient Layer
+        var wkt = new Wkt.Wkt();
+        var feature;
+        var sufferersGroup = [];
+        var suspectsGroup = [];
+
+        if(localStorage.username) {
+            $.ajax({
+                url: '../server/get_patients.php',
+                type: 'POST',
+                data: {},
+                async: false,
+                cache: false,
+                contentType: false,
+                enctype: 'multipart/form-data',
+                processData: false,
+                success: function(res) {
+                    var patients = JSON.parse(res);
+                    patients.forEach(function(patient, ix) {
+                        wkt.read(patient.geom); 
+                        feature = wkt.toObject();
+
+                        feature.patientType = patient.jenis;
+                        if(patient.jenis.toLowerCase() == "penderita") {
+                            feature.options.icon = iconSufferer;
+                            sufferersGroup.push(feature);
+                        }
+                        else if(patient.jenis.toLowerCase() == "suspect") {
+                            feature.options.icon = iconSuspect;
+                            suspectsGroup.push(feature);
+                        }
+                        
+                        markers.addLayer(feature);
+                        // feature.addTo(map);
+                        
+                        feature.on('click', function (e) { 
+                            var pop = L.popup();
+                            pop.setLatLng(e.latlng);
+
+                            var statusText = '';
+                            if(patient.jenis == 'penderita') { statusText = `<b style="color: #e57373;">PENDERITA</b>`; } 
+                            else if(patient.jenis == 'suspect') { statusText = `<b style="color: #ffd54f">SUSPECT</b>`; } 
+
+                            pop.setContent(`
+                                <table>
+                                    <tr>
+                                        <td>
+                                            <img src="../resources/foto_pasien/${patient.foto}" width="100px" height="100px" style="margin-right: 10px"> 
+                                            <br><br>
+                                            <span style="text-align: center">${statusText}</span>
+                                        </td>
+                                        <td>
+                                            <em>Nama</em>: ${patient.nama} <br>
+                                            <em>No. KTP</em>: ${patient.no_ktp} <br>
+                                            <em>Alamat</em>: ${patient.alamat} <br>
+                                            <em>Keluhan Sakit</em>: ${patient.keluhan_sakit} <br>
+                                            <em>Riwayat Perjalanan</em>: ${patient.riwayat_perjalanan} <br>
+                                            <em>Lokasi Karantina</em>:  
+                                        <em>Lokasi Karantina</em>:  
+                                            <em>Lokasi Karantina</em>:  
+                                        <em>Lokasi Karantina</em>:  
+                                            <em>Lokasi Karantina</em>:  
+                                                <span style="text-transform: capitalize;">${patient.nama_propinsi_karantina.toLowerCase()}</span>, 
+                                                <span style="text-transform: capitalize;">${patient.nama_kabupaten_kota_karantina.toLowerCase()}</span>
+                                                <br>
+                                            <em>Tanggal Dilaporkan</em>: ${patient.tanggal} <br>
+                                        </td>
+                                    </tr>
+                                    <tr style="text-align:center">
+                                        <td colspan="2">
+                                            <br>
+                                            <button type="button" id="btn-edit" class="btn btn-sm btn-warning">Ubah</button>
+                                            <button type="button" id="btn-delete" class="btn btn-sm btn-danger">Hapus</button>
+                                        </td>
+                                    </tr>
+                                </table>`);
+                            map.openPopup(pop);
+
+                            $('#btn-edit').on('click', function() {
+                                $('#patient_id').val(patient.id);
+                                $('#datetime_added').val(patient.tanggal);
+                                $('#is_changedate').val("false");
+                                $('.modal-title').text('Form Pengubahan Data Pasien Covid19');
+                                $('.selected-coordinates-text').hide();
+                                $('#btn-add-save').hide();
+                                $('#btn-edit-save').show();
+                                $('#modal-form-input').modal({ show: true });
+                                
+                                // Populate data
+                                $(`#input-patient-type option[value=${patient.jenis}]`).prop('selected', true); 
+                                $('#input-name').val(patient.nama);
+                                $('#input-ktp').val(patient.no_ktp);
+                                $('#input-address').val(patient.alamat);
+                                $('#input-photo').val('');
+                                $('#input-sick-complaint').val(patient.keluhan_sakit);
+                                $('#input-travel-history').val(patient.riwayat_perjalanan);
+                                $('#input-quarantine-provinces').prop('disabled', true);
+                                $(`#input-quarantine-provinces option[value=${patient.id_propinsi_karantina}]`).prop('selected', true); 
+                                $('#input-quarantine-districts').prop('disabled', true);
+                                $(`#input-quarantine-districts option[id="district-0"]`).text(patient.nama_kabupaten_kota_karantina); 
+                            });
+
+                            $('#input-patient-type').on('change', function() {
+                                var typeText = $(this).children("option:selected")[0].value;
+                                
+                                if(typeText != patient.jenis) {
+                                    $('#is_changedate').val("true");
+                                }
+                                else {
+                                    $('#is_changedate').val("false");
+                                }
+                            });
+
+                            $('#btn-delete').on('click', function() {
+                                $('#delete-patient-id').val(patient.id);
+                                
+                                $('#modal-form-delete .modal-body').html(`
+                                    <p>Apakah Anda yakin ingin menhapus data:</p>
+                                    <p>${patient.nama} (${patient.no_ktp}) yang diindikasikan sebagai "${patient.jenis.toUpperCase()}" ?</p>
+                                `);
+                                $('#modal-form-delete').modal({ show: true });
+                            });
+                        });   
+                    });
+
+                    map.addLayer(markers);
+                }
+            });
+        }
+        ///// END LAYER /////
+
+        ///// BEGIN DRAWING /////
+        var draw;
+        var is_drawing = false;
+        var pointDrawer = new L.Draw.Marker(map);
+
+        $('#btn-digit-point').on('click', function() {
+            if(!is_drawing) {
+                $('#btn-digit-point').html('<i class="material-icons">close</i> Batal Digit Point');
+                $('#btn-digit-point').addClass("btn-danger");
+                pointDrawer.enable();
+                is_drawing = true;
+
+                map.on('draw:created', function (e) {
+                    var type = e.layerType,
+                        layer = e.layer;
+
+                    var shape = layer.toGeoJSON();
+                    var shapeDB = JSON.stringify(shape);
+                    shapeDB = JSON.parse(shapeDB);  
+                    var lat = shapeDB['geometry']['coordinates'][1],
+                        lng = shapeDB['geometry']['coordinates'][0];
+                
+                    var geom = "";
+                    if (shapeDB['geometry']['type'] == "Point") {
+                        geom = `POINT(${lng} ${lat})`; 
+                    }
+
+                    // layer.addTo(map);
+                    
+                    $('#btn-digit-point').html('<i class="material-icons">place</i> Digit Point');
+                    $('#btn-digit-point').removeClass("btn-danger");
+                    pointDrawer.disable();
+                    is_drawing = false;
+
+                    // Show modal
+                    $('#input-msg').hide();
+                    $('.modal-title').text('Form Tambah Data Pasien Covid19');
+                    $('.selected-coordinates-text').show();
+                    $('#btn-add-save').show();
+                    $('#btn-edit-save').hide();
+                    $('#modal-form-input').modal({ show: true });
+
+                    $('#geom').val(geom);
+                    $('.draw-coordinates').text(`${lat}, ${lng}`);
+                });
+            }
+            else {
+                $('#btn-digit-point').html('<i class="material-icons">place</i> Digit Point');
+                $('#btn-digit-point').removeClass("btn-danger");
+                pointDrawer.disable();
+                is_drawing = false;
+            }
+
+            // Reset data
+            $(`#input-patient-type option[id="patient-0"]`).prop('selected', true); 
+            $('#input-name').val('');
+            $('#input-ktp').val('');
+            $('#input-address').val('');
+            $('#input-photo').val('');
+            $('#input-sick-complaint').val('');
+            $('#input-travel-history').val('');
+            $('#input-quarantine-provinces').prop('disabled', null);
+            $(`#input-quarantine-provinces option[id="province-0"]`).prop('selected', true); 
+            $('#input-quarantine-districts').prop('disabled', null);
+            $(`#input-quarantine-districts option[id="district-0"]`).text('-- Kabupaten/Kota --'); 
+                $(`#input-quarantine-districts option[id="district-0"]`).text('-- Kabupaten/Kota --'); 
+            $(`#input-quarantine-districts option[id="district-0"]`).text('-- Kabupaten/Kota --'); 
+                $(`#input-quarantine-districts option[id="district-0"]`).text('-- Kabupaten/Kota --'); 
+            $(`#input-quarantine-districts option[id="district-0"]`).text('-- Kabupaten/Kota --'); 
+        });
+        ///// END DRAWING /////
+
+        ///// BEGIN MAP EVENT /////
+        $('input[type="checkbox"]').click(function() {
+            var checkedVal = $(this).val();
+
+            // checked
+            if ($(this).is(':checked')) {
+                // Show selected layer(s)
+                var group;
+                if(checkedVal == "penderita") { group = sufferersGroup; }
+                else if(checkedVal == "suspect") { group = suspectsGroup; }
+                group.forEach(function(feature, index) {
+                    feature.addTo(map);
+                });
+            }
+
+            // unchecked
+            else {
+                // Hide selected layer(s)
+                map.eachLayer(function (layer) {
+                    if(layer.patientType == checkedVal) {
+                        map.removeLayer(layer);
+                    }
+                });
+            }
+        });
+        ///// END MAP EVENT /////
+
+        ///// BEGIN SHOWING CHART FUNCTION /////
+        function showPieChart(nama, lat, long, jumlah_suspect, jumlah_penderita) {
+            // Overlay chart
+            var configChart = {
+                type: 'pie',
+                data: {
+                    labels: ['Suspect', 'Penderita'],
+                    datasets: [{
+                        data: [
+                            jumlah_suspect, jumlah_penderita
+                        ],
+                        backgroundColor: [
+                            '#ffd54f', '#e57373'
+                        ]
+                    }]    
+                },
+                options: {
+                    responsive: true,
+                    legend: {
+                        position: 'top',
+                        display: false,
+                    },
+                    title: {
+                        display: false,
+                        text: 'Chart.js Bar Chart'
+                    }
+                }
+            };
+
+            $("#canvas_chart").remove(); // Remove previous canvas
+            $("#overlay_chart").html(`
+                <span><a href="#" id="chart_close" style="color: #ef9a9a">[X]</a></span> <br>
+                <span id="chart_title"></span> <br>
+                <canvas id="canvas_chart" />
+            `); // Add new canvas
+
+            var ctx = document.getElementById("canvas_chart").getContext("2d");
+            window.myPie = new Chart(ctx, configChart);
+
+            $('#overlay_chart').hide();
+            $('#overlay_chart').show(2000);
+            $('#chart_title').text(`Grafik Pasien ${nama}`);
+
+            $('#chart_close').on('click', function(e) {
+                e.preventDefault();
+                $('#overlay_chart').hide();
+            });
+        }
+        ///// END SHOWING CHART FUNCTION /////
+
+        // Showing patients data per provinces
+        var currProvinceId = -1;
+        $.post("../server/get_provinces_with_case.php", {}, function(data) {
+            var results = JSON.parse(data);
+            var provincesArr = [];
+            var total_provinces_with_case = 0;
+
+            results.forEach(function(province, ix) {
+                if(province.jumlah_pasien != 0) {
+                    total_provinces_with_case++;
+                }
+
+                $('#provinces-with-case-list').append(`
+                    <a href="#" id="province-with-case-${province.id}" class="province-with-case list-group-item list-group-item-action bg-dark text-white text-center">
+                        ${province.nama} (${province.jumlah_pasien})
+                    </a>
+                `);
+                
+                // Hide some province list
+                if(ix > 10) { $(`#province-with-case-${province.id}`).hide(); }
+
+                $('.province-with-case').on('click', function(e) {
+                    e.preventDefault();
+
+                    currProvinceId = $(this)[0].id.split('-')[3];
+                    
+                    if(province.id == currProvinceId) {
+                        // Move the map's view to selected province
+                        map.flyTo([province.lat, province.long], 7, {
+                            animate: true,
+                            duration: 2.75
+                        });
+                        
+                        ///// SHOWING CHART /////
+                        showPieChart(province.nama, province.long, province.lat, province.jumlah_suspect, province.jumlah_penderita);
+                    }
+                });
+
+                provincesArr.push(`${province.id} - ${province.nama} (${province.jumlah_pasien})`);
+            });
+
+            // Show `Tampilkan Semua` button
+            $('#provinces-with-case-list').append(`
+                <button type="button" id="btn-show-all-provinces-with-case" class="btn btn-primary">Tampilkan Semua</button>
+                <button type="button" id="btn-show-less-provinces-with-case" class="btn btn-primary">Tampilkan Beberapa</button>
+            `);
+            $('#btn-show-less-provinces-with-case').hide();
+
+            $('#btn-show-all-provinces-with-case').on('click', function() {
+                $(this).hide();
+
+                // Show more provinces
+                $('.province-with-case').each(function(ix) {
+                    if(ix > 10) { $(this).show(); }
+                });
+
+                $('#btn-show-less-provinces-with-case').show();
+            });
+
+            $('#btn-show-less-provinces-with-case').on('click', function() {
+                $(this).hide();
+
+                // Show more provinces
+                $('.province-with-case').each(function(ix) {
+                    if(ix > 10) { $(this).hide(); }
+                });
+
+                $('#btn-show-all-provinces-with-case').show();
+            });
+
+            // Populate searchbox autocomplete
+            $("#searchbox").autocomplete({
+                source: provincesArr,
+                select: function(e, ui) {  
+                    var id = ui.item.label.split('-')[0];     
+
+                    // Move the map's view to selected province by triggering province with case list
+                    $(`#province-with-case-${id}`).triggerHandler('click');
+                }
+            });
+
+            $('#total_provinces_with_case').text(total_provinces_with_case);
+        });
+    </script>
+
+    <!-- Other Components Related -->
+    <script>
+        $(document).ready(function() {
+            // Admin area
+            if(localStorage.username) {
+                $('.login-admin-text').hide();
+                $('.admin-box').show();
+                $('#input-msg').hide();
+                $('.admin-username').text(`${localStorage.username}!`);
+
+                $('.btn-logout').on('click', function() {
+                    localStorage.username = "";
+                    window.location.reload();
+                });
+
+                // Get all provinces data
+                $.post("../server/get_provinces.php", {}, function(data) {
+                    var provinces = JSON.parse(data);
+                    provinces.forEach(function(province) {
+                        $('#input-quarantine-provinces').append(`
+                            <option id="province-${province.id}" value="${province.id}">${province.nama}</option>
+                        `);
+                    });
+                });
+
+                $('#input-quarantine-provinces').on('change', function() {
+                    var provinceId = $(this).children("option:selected")[0].id.split('-')[1];
+                    
+                    if(provinceId != 0) {
+                        $.post("../server/get_districts.php", { provinceId: provinceId }, function(data) {
+                            var districts = JSON.parse(data);
+                            
+                            $('#input-quarantine-districts').html('<option id="district-0" value="">-- Kabupaten/Kota --</option>');
+                            districts.forEach(function(disctrict) {
+                                $('#input-quarantine-districts').append(`
+                                    <option id="district-${disctrict.id}" value="${disctrict.id}">${disctrict.nama}</option>
+                                `);
+                            });
+                        });
+                    }
+                    else {
+                        $('#input-quarantine-districts').html('<option id="district-0" value="">-- Kabupaten/Kota --</option>');
+                    }
+                });
+
+                $('#btn-add-save').on('click', function() {
+                    var formData = new FormData($("#frmData")[0]);
+                    $.ajax({
+                        url: '../server/add_patient.php',
+                        type: 'POST',
+                        data: formData,
+                        async: false,
+                        cache: false,
+                        contentType: false,
+                        enctype: 'multipart/form-data',
+                        processData: false,
+                        success: function(res) {
+                            if(res == "SUCCESS") {
+                                $('#input-msg').text("Penyimpanan Data Pasien Berhasil");
+                                $('#input-msg').css("color", "green");
+                                $('#input-msg').show();
+                                
+                                setTimeout(function(){
+                                    window.location.reload();
+                                }, 2000);
+                            }
+                            else {
+                                $('#input-msg').text(res);
+                                $('#input-msg').css("color", "red");
+                                $('#input-msg').show();
+                            }
+                        }
+                    });
+                });
+
+                $('#btn-edit-save').on('click', function() {
+                    var formData = new FormData($("#frmData")[0]);
+                    $.ajax({
+                        url: '../server/edit_patient.php',
+                        type: 'POST',
+                        data: formData,
+                        async: false,
+                        cache: false,
+                        contentType: false,
+                        enctype: 'multipart/form-data',
+                        processData: false,
+                        success: function(res) {
+                            if(res == "SUCCESS") {
+                                $('#input-msg').text("Pengubahan Data Pasien Berhasil");
+                                $('#input-msg').css("color", "green");
+                                $('#input-msg').show();
+                                
+                                setTimeout(function(){
+                                    window.location.reload();
+                                }, 2000);
+                            }
+                            else {
+                                $('#input-msg').text(res);
+                                $('#input-msg').css("color", "red");
+                                $('#input-msg').show();
+                            }
+                        }
+                    });
+                });
+
+                $('#btn-delete-save').on('click', function() {
+                    $.post("../server/delete_patient.php", { patient_id: $('#delete-patient-id').val() }, function(data) {
+                        if(data == "SUCCESS") {
+                            $('#delete-msg').text('Penghapusan Data Pasien Berhasil');
+                            $('#delete-msg').css("color", "green");
+                            $('#delete-msg').show();
+                            
+                            setTimeout(function(){
+                                window.location.reload();
+                            }, 2000);
+                        }
+                        else {
+                            $('#delete-msg').text(data);
+                            $('#delete-msg').css("color", "red");
+                            $('#delete-msg').show();
+                        }
+                    });
+                });
+            }
+
+            // Public area
+            else {
+                $('#checkbox_suspect').prop('checked', false).triggerHandler('click');
+                $('#checkbox_penderita').prop('checked', false).triggerHandler('click');
+                $('.admin-box').hide();
+            }
+
+            // Get patients summary
+            $.post("../server/get_patients_summary.php", {}, function(data) {
+                var results = JSON.parse(data);
+                
+                $("#total_pasien").text(parseInt(results.total_penderita) + parseInt(results.total_suspect));
+                $("#total_penderita").text(results.total_penderita);
+                $("#total_suspect").text(results.total_suspect);
+                $("#rata_penderita_per_hari").text(results.rata_penderita_per_hari);
+                $("#rata_suspect_per_hari").text(results.rata_suspect_per_hari);
+            });
+
+            // Get provinces with case data
+            $.post("../server/get_patients_summary.php", {}, function(data) {
+                var results = JSON.parse(data);
+                
+                $("#total_pasien").text(parseInt(results.total_penderita) + parseInt(results.total_suspect));
+                $("#total_penderita").text(results.total_penderita);
+                $("#total_suspect").text(results.total_suspect);
+                $("#rata_penderita_per_hari").text(results.rata_penderita_per_hari);
+                $("#rata_suspect_per_hari").text(results.rata_suspect_per_hari);
+            });
+
+            ///// BEGIN PIE CHART CASE PER PROVINCE /////
+            $.post("../server/get_provinces_with_case.php", {}, function(data) {
+                var labelsArr1 = [];
+                var dataArr1 = [];
+                var bgColorArr1 = [];
+
+                var provinces = JSON.parse(data);
+                provinces.forEach(function (province) {
+                    labelsArr1.push(province.nama);
+                    dataArr1.push(province.jumlah_pasien);
+                });
+
+                for(var i = 1; i <= 34; i++) {
+                    bgColorArr1.push('#'+(Math.random()*0xFFFFFF<<0).toString(16)); 
+                }
+
+                var config1 = {
+                    type: 'pie',
+                    data: {
+                        labels: labelsArr1,
+                        datasets: [{
+                            data: dataArr1,
+                            backgroundColor: bgColorArr1
+                        }]    
+                    },
+                    options: {
+                        responsive: true,
+                        legend: {
+                            position: 'top',
+                            display: false,
+                        }
+                    }
+                };
+
+                var ctx = document.getElementById("canvas-pie-chart-case-per-province").getContext("2d");
+                window.myPie = new Chart(ctx, config1);
+            });
+            ///// END PIE CHART CASE PER PROVINCE /////
+
+            ///// BEGIN LINE CHART PATIENT REPORT PER WEEK /////
+            $.post("../server/get_reports.php", {}, function(data) {
+                var obj = JSON.parse(data); console.log(obj);
+
+                var config2 = {
+                    type: 'line',
+                    data: {
+                        labels: obj.label_bulan,
+                        datasets: [
+                        // Suspect
+                        {
+                            label: 'Suspect',
+                            data: obj.label_total_suspect,
+                            borderColor: ['#ffd54f'],
+                            fill: false
+                        },
+                        // Penderita
+                        {
+                            label: 'Penderita',
+                            data: obj.label_total_penderita,
+                            borderColor: ['#e57373'],
+                            fill: false
+                        }]    
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scaleShowGridLines : true
+                    }
+                };
+
+                var ctx = document.getElementById("canvas-line-chart-report").getContext("2d");
+                window.myPie = new Chart(ctx, config2);
+            });
+            ///// END LINE CHART PATIENT REPORT PER WEEK /////
+        });
+    </script>
+</body>
+</html>
