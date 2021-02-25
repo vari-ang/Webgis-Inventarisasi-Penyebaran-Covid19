@@ -4,6 +4,14 @@ Terdapat 2 hak akses
 - Masyarakat
 - Admin
 
+![Dashboard Admin](https://github.com/vari8/Webgis-Inventarisasi-Penyebaran-Covid19/blob/master/screenshots/Dashboard%20admin%20-%202.png)
+
+![Dashboard Masyarakat](https://github.com/vari8/Webgis-Inventarisasi-Penyebaran-Covid19/blob/master/screenshots/Dashboard%20masyarakat%20-%202.png)
+
+![Form Tambah Pasien](https://github.com/vari8/Webgis-Inventarisasi-Penyebaran-Covid19/blob/master/screenshots/From%20tambah%20pasien.png)
+
+![Penyebaran Covid Kabupaten](https://github.com/vari8/Webgis-Inventarisasi-Penyebaran-Covid19/blob/master/screenshots/Peta%20penyebaran%20covid%20di%20kabupaten.png)
+
 #### Fitur masyarakat:
 - Tidak perlu login
 Secara default, user akan mengakses sitem sebagai masyarakat dan sistem menampilkan peta persebaran pasien yang terjangkit covid19. 
